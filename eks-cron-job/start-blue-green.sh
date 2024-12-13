@@ -1,0 +1,1 @@
+source $WORKING_DIRECTORY/deploy.sh

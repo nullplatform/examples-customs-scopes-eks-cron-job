@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ env.Getenv "APPLICATION_NAME" }}-{{ env.Getenv "APPLICATION_ID" }}-{{ env.Getenv "SCOPE_NAME" }}-{{ env.Getenv "SCOPE_ID" }}
+  namespace: nullplatform
+spec:
+  schedule: "{{ env.Getenv "CRON_EXPRESSION" }}"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            account: "{{ env.Getenv "ACCOUNT_NAME" }}"
+            account_id: "{{ env.Getenv "ACCOUNT_ID" }}"
+            application: "{{ env.Getenv "APPLICATION_NAME" }}"
+            application_id: "{{ env.Getenv "APPLICATION_ID" }}"
+            deployment_id: "{{ env.Getenv "DEPLOYMENT_ID" }}"
+            namespace: "{{ env.Getenv "NAMESPACE_NAME" }}"
+            namespace_id: "{{ env.Getenv "NAMESPACE_ID" }}"
+            nullplatform: 'true'
+#            pod-template-hash: 75dd4c9bf
+            scope: "{{ env.Getenv "SCOPE_NAME" }}"
+            scope_id: "{{ env.Getenv "SCOPE_ID" }}"
+          annotations:
+            nullplatform.logs.cloudwatch: 'true'
+            nullplatform.logs.cloudwatch.log_group_name: {{ env.Getenv "NAMESPACE_NAME" }}.{{ env.Getenv "APPLICATION_NAME" }}
+            nullplatform.logs.cloudwatch.log_stream_log_retention_days: '7'
+            nullplatform.logs.cloudwatch.log_stream_name_pattern: >-
+              type=${type};application={{ env.Getenv "APPLICATION_ID"}};scope=${scope};deploy=${deploy};instance=${instance};container=${container}
+            nullplatform.logs.cloudwatch.region: us-east-1
+        spec:
+          containers:
+            - name: application
+              env:
+                - name: NP_ACCOUNT
+                  value: "{{ env.Getenv "ACCOUNT_ID" }}"
+                - name: NP_NAMESPACE
+                  value: "{{ env.Getenv "NAMESPACE_ID" }}"
+                - name: NP_APPLICATION
+                  value: "{{ env.Getenv "APPLICATION_ID" }}"
+                - name: NP_SCOPE
+                  value: "{{ env.Getenv "SCOPE_ID" }}"
+                - name: NP_DEPLOYMENT_ID
+                  value: "{{ env.Getenv "DEPLOYMENT_ID" }}"
+                - name: NP_RELEASE_SEMVER
+                  value: {{ env.Getenv "SEMVER" }}
+                {{- $dimensions := (json (env.Getenv "DIMENSIONS")) -}}
+                {{- range $key, $value := $dimensions }}
+                - name: NP_DIMENSION_{{strings.ToUpper $key}}
+                  value: {{$value}}
+                {{- end }}
+              image: {{ env.Getenv "IMAGE" }}
+          restartPolicy: OnFailure
